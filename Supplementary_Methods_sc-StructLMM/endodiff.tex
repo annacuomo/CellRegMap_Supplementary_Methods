@@ -1,0 +1,48 @@
+\section{Application to endoderm differentiation}\label{sec:endodiff}
+
+We considered single-cell expression data from 125 individuals from \cite{cuomo2020single}.
+These data cover \textit{in vitro} differentiation of iPS cells from pluripotent stage (day0) to definitive endoderm (day3).
+Compared to the entire dataset considered in the original publication, we discarded two outlying cell sub-populations (n=475 and n=1,212 respectively).
+
+\subsection{Preprocessing of scRNA-seq count data}
+
+Count data were processed as in the primary paper \cite{cuomo2020single}, where counts were normalised using scran \cite{lun2016pooling} and log-transformed ($log_2(x+1)$).
+Prior to be inputed into the model as phenotype vectors (i.e., as $\mathbf{y}$), single-cell counts for a given gene were quantile-normalized to better fit the Gaussian distribution assumed by the model.
+The log-normalized count data (prior to quantile normalization) for the top 500 highly variable genes is also used as input for MOFA (see details below).
+
+\subsection{Estimation and annotation of MOFA factors}
+
+MOFA \cite{argelaguet2018multi} factors calculated from the expression profiles of the top 500 highly variable genes identified across all cells (using scran’s function “modelGeneVar”), using default parameters. 
+Annotation of the leading 10 MOFA factors was performed using gprofiler \cite{raudvere2019g}, considering the absolute loading of individual genes as estimated by MOFA.   
+For each MOFA factor, we considered the top 20 enriched pathways to annotate individual factors (adjusted p-values $<$ 0.05; Supplementary Fig. 3.1).
+
+\subsection{Testing for G$\times$C effects}
+
+We considered \emph{cis}-eQTL from \cite{cuomo2020single}. 
+In particular, we considered all gene-SNP pairs that were  significant (FDR $<$ 10\%) in one or more of the developmental stages considered in the original paper, i.e., iPSCs, mesendoderm, definitive endoderm. 
+In total, we considered 4,470 eQTL pairs (3,240 eGenes).
+This approach is typical to GxE interaction testing, where SNPs with at least weak persistent effects (g only) are used as good candidates to display GxE effects. 
+\\
+
+Next, we mapped context-specific effects using either 1 or 10 MOFA factors. 
+In both cases, all 20 MOFA factors were used to construct the background term, i.e., columns in $\mathbf{E}$ standardized and then used to build $\boldsymbol{\Sigma}=\mathbf{E}\mathbf{E}^T$.
+To account for the multiple testing burden, the resulting p-values were corrected at the gene-level using the Bonferroni procedure to control the family-wise error rate, and across genes using the Storey method to control the false-discovery rate (FDR). 
+Significant results were reported at FDR $<$ 5\%. 
+
+\subsection{Estimation of single-cell effect sizes}
+
+We estimated both persistent genetic effects ($\beta_G$) and cell-level effect sizes due to G$\times$C ($\boldsymbol{\beta_{GxC}}$; as described in Section \ref{sec:beta_gxe}) for the top significant context-specific eQTL identified (FDR $<$ 5\%), when considering either only one MOFA factor (MOFA 1, capturing differentiation) or the first 10 MOFA factors as cell contexts.
+% each of 1, 2, 5, 10 and 20 MOFA factors as contexts.
+% For each eQTL, the magnitude of GxC driven effects was calculated as the difference between the 0.9 and 0.1 quantiles from the cell-level effect size estimates.
+
+% \subsection{Clustering of single-cell effect sizes}
+
+% Clustering of the effect-size profiles of 322 significant context-specific eQTL (FDR $<$ 5\%) identified using 10 MOFA factors as contexts was performed using SpatialDE, by using the same first 10 MOFA factors as spatial coordinates, and default parameters. 
+% Effect sizes were standardized prior to clustering (mean=0, standard deviation=1). 
+% This identified 17 clusters, containing between 2 and 66 genes.
+
+% \subsection{Cluster enrichment}
+
+% For each cluster, I considered Pearson's correlation between the cluster's summary profiles and single-cell gene expression across all genes (n=11,231).
+% Next, I selected all genes with absolute correlation larger than 0.5 (for X/17 clusters no genes were selected) and used gprofiler \cite{raudvere2019g} to identify enriched pathways. 
+% Finally, I selected the top XX significant (adjusted p-values < 0.05) pathways per cluster 

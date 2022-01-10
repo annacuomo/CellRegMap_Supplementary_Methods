@@ -1,0 +1,223 @@
+\section{Derivations}
+
+\subsection{Detailed derivations from section \ref{sec:beta_gxe}}
+\label{sec:derivations_blup}
+
+A linear mixed model is a type of Gaussian Process, that can be written as:
+
+\begin{align}
+    \mathbf{f} \sim \mathcal{GP}\{\mathbf{m}; k(\mathbf{X}, \mathbf{X})_{\bftheta}\},
+\end{align}
+
+or, equivalently, as:
+
+\begin{align}
+    \mathbf{f} = \mathbf{m} + \mathbf{u},
+\end{align}
+
+where
+
+\begin{align}
+    \mathbf{m} = \mathbf{X} \bfbeta_{\theta}
+     \text{~~and~~}
+     \mathbf{u} \sim \mathcal N(\mathbf{0}, k(\mathbf{X}, \mathbf{X})_{\theta}). 
+\end{align}
+
+When we model our data ($\mathbf{X}$ and $\mathbf{y}$), we consider $\mathbf{y}$ as being a sample from the random variable $\mathbf{f}$, and $\mathbf{X}$ as being fixed.
+Let us collectively call the parameters $\boldsymbol{\theta}$.
+% $\boldsymbol{\theta} = \{ \bfbeta, \sigma^2_k, \sigma^2_n\}$.
+For all parameters, we can find the set of best linear unbiased predictor (BLUP) estimators ($\hat{\boldsymbol{\theta}}_{BLUP}$ or simply $\hat{\boldsymbol{\theta}}$) which i) minimise the variance and ii) are unbiased \cite{robinson1991blup}. 
+We identify $\hat{\boldsymbol{\theta}}$ by maximising the likelihood:
+
+\begin{align}
+ \hat{\boldsymbol{\theta}} = \mathrm{argmax} \{p(\mathbf{y})_{\boldsymbol{\theta}}\}
+\end{align}
+
+Let us reason about out-of-sample $\mathbf{f}_*$, assuming that we now have the BLUP-estimated parameters ($\hat{\boldsymbol{\theta}}$):
+
+\begin{align}
+\left[\begin{array}{c}
+            \mathbf{f} \\
+            \mathbf{f}_*
+\end{array}\right]  = \mathcal{N} \left( 
+\left[\begin{array}{c}
+    \mathbf{m}_{\hat{\boldsymbol{\theta}}} \\
+    \mathbf{m}_{*\hat{\boldsymbol{\theta}}}
+\end{array}\right];
+\left[\begin{array}{cc}
+    k(\mathbf{X}, \mathbf{X})_{\hat{\boldsymbol{\theta}}} & k(\mathbf{X}, \mathbf{X}_*)_{\hat{\boldsymbol{\theta}}} \\
+    k(\mathbf{X}_*, \mathbf{X})_{\hat{\boldsymbol{\theta}}} & k(\mathbf{X}_*, \mathbf{X}_*)_{\hat{\boldsymbol{\theta}}}
+\end{array}\right]
+\right).
+\end{align}
+
+We want to know $\mathbf{y}_*$, it seems reasonable (argue better, maybe mentioning that this is also a BLUP estimation) to define (noise-free prediction according to \cite{rasmussen2003gaussian})
+
+\begin{align}
+    \mathbf{y}_* \coloneqq \mathrm{E}[\mathbf{f}_* | \mathbf{y}]_{\hat{\boldsymbol{\theta}}}.
+\end{align}
+
+We can show \cite{rasmussen2003gaussian} that (note that we omit $\hat{\boldsymbol{\theta}}$ for reading purposes):
+
+\begin{align}
+\mathbf{f}_* | \mathbf{f} \sim \mathcal{N} \left(
+    \mathbf{m}_* +
+        k(\mathbf{X}_*,\mathbf{X})k(\mathbf{X},\mathbf{X})^{-1}
+        (\mathbf{f}-\mathbf{m})
+    ;~
+        k(\mathbf{X}_*,\mathbf{X}_*) - k(\mathbf{X}_*,\mathbf{X}) 
+        k(\mathbf{X},\mathbf{X})^{-1}k(\mathbf{X},\mathbf{X}_*)
+    \right).
+\end{align}
+
+Therefore (needs some steps to prove),
+
+\begin{align}
+\mathbf{y}_* = \mathbf{m}_* + k(\mathbf{X}_*,\mathbf{X})k(\mathbf{X},\mathbf{X})^{-1}(\mathbf{y}-\mathbf{m}).
+\end{align}
+
+In our case,
+
+\begin{equation}
+    \mathbf{m} = \mathbf{W}\bfalpha + \bfg \beta_G + \mathbf{E} \boldsymbol{\gamma},
+\end{equation}
+
+\begin{equation}\label{eq:K_predict}
+    k(\mathbf{X},\mathbf{X}) = \mathbf{K} = \sigma_{GxE}^2(\mathbf{g}\odot\mathbf{E})(\mathbf{g}\odot\mathbf{E})^T + \sigma_{re}^2 \mathbf{R} \odot \mathbf{E}\mathbf{E}^T + \sigma_n^2 \mathbf{I}.
+\end{equation}
+
+Note that
+
+\begin{align}
+    k(\mathbf{X}_*,\mathbf{X}) = \mathbf{K}_{(*,.)} =  \sigma_{GxE}^2(\mathbf{g}_*\odot\mathbf{E}_*)(\mathbf{g}\odot\mathbf{E})^T +
+        \sigma_{re}^2 \mathbf{R}_{(*,.)} \odot \mathbf{E}_*\mathbf{E}^T + \sigma_n^2 \delta(\mathbf{X}_*,\mathbf{X}),
+\end{align}
+
+where $\delta$ is the Dirac distribution (0 when $i \neq j$ and 1 when $i = j$). \\
+
+Therefore,
+
+\begin{equation}
+    \mathbf{y}_* = \mathbf{W}_*\bfalpha + \bfg_* \beta_G + \mathbf{E}_* \boldsymbol{\gamma} + k(\mathbf{X}_*,\mathbf{X}) k(\mathbf{X},\mathbf{X})^{-1} (\mathbf{y}-\mathbf{W}\bfalpha + \bfg \beta_G + \mathbf{E} \boldsymbol{\gamma})
+\end{equation}
+
+Now, for each individual, we consider its environmental profile $\mathbf{e}_{*,i}$ (the $i^{th}$ corresponding row from $\mathbf{E}_*$), and estimate $y_{*,i} (\mathrm{ref})$ when setting $g_{*,i}=0$ and then $y_{*,i} (\mathrm{alt})$ when setting $g_{*,i}=1$ and obtain the corresponding allelic effect $\beta_{GxE,i}^*$ as the difference, normalised by a constant (based on p=MAF):
+
+\begin{align}
+    \beta_{i}^* = \frac{1}{\sqrt{2p(1-p)}} \ (y_{*,i} (\mathrm{alt}) - y_{*,i} (\mathrm{ref}))
+\end{align}
+
+For all samples, we consider the vectorial form: 
+
+\begin{equation}\label{eq:beta*}
+    \bfbeta^* = \frac{1}{\sqrt{2p(1-p)}} \ (\mathbf{y}_*(\mathrm{alt}) - \mathbf{y}_*(\mathrm{ref})),
+\end{equation}
+
+where:
+
+\begin{align}
+    \mathbf{y}_*(\mathrm{alt}) = \mathbf{y}_*(\mathbf{g}_*=\mathbf{1}) = \mathbf{m}_*(\mathbf{g}_*=\mathbf{1}) + \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{1}) \ \mathbf{K}^{-1} (\mathbf{y}-\mathbf{m})
+\end{align}
+
+% i.e.:
+
+% \begin{align}
+%     \mathbf{y}_*(\mathrm{alt}) = \mathbf{y}_*(\mathbf{g}_*=\mathbf{1}) = \mathbf{W}_*\bfalpha + \mathbf{1}\beta_G + \mathbf{E}_* \boldsymbol{\gamma} + [\sigma^2\mathbf{E}\mathbf{E}^T +  \sigma^2\mathbf{K}\odot\boldsymbol{\Sigma} + \sigma^2_n\mathbf{I}] cov(\mathbf{y})^{-1}(\mathbf{y}-\mathbf{W}\bfalpha - \bfg \beta_G - \mathbf{E} \boldsymbol{\gamma})
+% \end{align}
+
+and
+
+\begin{align}
+    \mathbf{y}_*(\mathrm{ref}) = \mathbf{y}_*(\mathbf{g}_*=\mathbf{0}) = \mathbf{m}_*(\mathbf{g}_*=\mathbf{0}) + \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{0}) \ \mathbf{K}^{-1} (\mathbf{y}-\mathbf{m}).
+\end{align}
+
+
+% i.e.:
+
+% \begin{align}
+%     \mathbf{y}_*(\mathrm{ref}) = \mathbf{y}_*(\mathbf{g}_*=\mathbf{0}) = \mathbf{W}_*\bfalpha + \mathbf{E}_* \boldsymbol{\gamma} + [\sigma^2\mathbf{K}\odot\boldsymbol{\Sigma} + \sigma^2_n\mathbf{I}] cov(\mathbf{y})^{-1}(\mathbf{y}-\mathbf{W}\bfalpha - \bfg \beta_G - \mathbf{E} \boldsymbol{\gamma})
+% \end{align}
+
+Let us set:
+
+\begin{align}
+    \mathbf{v} = \mathbf{K}^{-1}(\mathbf{y}-\mathbf{m}).
+\end{align}
+
+Next, we note that:
+
+\begin{align}
+    \mathbf{m}_*(\mathbf{g}_*=\mathbf{1}) - \mathbf{m}_*(\mathbf{g}_*=\mathbf{0}) = \mathbf{W}_*\bfalpha + \mathbf{1}\beta_G + \mathbf{E}_* \boldsymbol{\gamma} - (\mathbf{W}_*\bfalpha + \mathbf{E}_* \boldsymbol{\gamma}) = \mathbf{1}\beta_G.
+\end{align}
+
+Moreover, 
+% change identity to dirac here
+
+\begin{align}
+\begin{split}
+    \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{1}) - \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{0}) =\\ \sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T +
+        \textcolor{blue}{\sigma_{re}^2 \mathbf{R}_{(*,.)} \odot \mathbf{E}_*\mathbf{E}^T  + \sigma^2_n \mathbf{I}} + \\- (\textcolor{blue}{\sigma_{re}^2 \mathbf{R}_{(*,.)} \odot \mathbf{E}_*\mathbf{E}^T  + \sigma^2_n \mathbf{I}}) = \\ \sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T
+\end{split}
+\end{align}
+
+% \begin{equation}
+% \begin{split}
+%     \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{1}) - \mathbf{K}_{(*,.)}(\mathbf{g}_*=\mathbf{0}) \\ & = \sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T +
+%         \sigma_{re}^2 \mathbf{R}_{*,.} \odot \mathbf{E}_*\mathbf{E}^T  - (\sigma_{re}^2 \mathbf{R}_{*,.} \odot \mathbf{E}_*\mathbf{E}^T) = \\ \sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T
+% \end{split}
+% \end{equation}
+
+
+Thus,
+
+\begin{align}\label{eq:diff_y*}
+    \mathbf{y}_*(\mathrm{alt}) - \mathbf{y}_*(\mathrm{ref}) = \mathbf{1}\beta_G + \sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T \mathbf{v}
+\end{align}
+
+And finally, by substituting eq. \eqref{eq:diff_y*} in eq. \eqref{eq:beta*}:
+
+\begin{align}
+    \bfbeta^* = \frac{1}{\sqrt{2p(1-p)}} \ \{\underbrace{\mathbf{1}\beta_G}_{\boldsymbol{\beta_G}^*} + \underbrace{\sigma_{GxE}^2\mathbf{E}_*(\mathbf{g}\odot\mathbf{E})^T \mathbf{K}^{-1}(\mathbf{y}-\mathbf{W}\bfalpha - \bfg \beta_G - \mathbf{E} \boldsymbol{\gamma})}_{\boldsymbol{\beta_{GxE^*}}}\},
+\end{align}
+
+where $\mathbf{K}$ is as defined in eq. \eqref{eq:K_predict}.
+
+%%%%%%
+
+\newpage
+
+\subsection{Detailed derivations from section \ref{sec:simulations}}
+\label{sec:derivations_simul}
+
+Consider eq. \eqref{eq:simulated_pheno} for a single individual:
+
+\begin{align}
+    y = y_0 + \sum_i^S g_i \beta_{G,i} + \textcolor{red}{\sum_i^S g_i \boldsymbol{\epsilon}^T\bfalpha_{GxE,i}} +  \boldsymbol{\epsilon}^T \boldsymbol{\gamma} + 
+\end{align}
+% from ppt
+
+and let us focus on the GxE term:
+
+\begin{align}
+    y_{GxE} = \sum_i^S g_i \boldsymbol{\epsilon}^T\bfalpha_{GxE,i}
+\end{align}
+
+We have
+
+\begin{align}
+    \mathrm{E}[y_{GxE}] = \mathrm{E}[\sum_i^S g_i \boldsymbol{\epsilon}^T\bfalpha_{GxE,i}] =  \sum_i^S \mathrm{E}[g_i \boldsymbol{\epsilon}^T\bfalpha_{GxE,i}] = \sum_i^S \textcolor{red}{\overbrace{\mathrm{E}[g_i]}^{=0}} [\boldsymbol{\epsilon}^T\bfalpha_{GxE,i}] = 0,
+\end{align}
+
+where we use that $\mathbf{g}_i$ is standardised ($\mathrm{E}[g_i]=0$) and we assume that $g_i$ and $\boldsymbol{\epsilon}^T\bfalpha_{GxE,i}$ are uncorrelated. \\
+
+
+We also have (for every SNP $i$, environment $j$):
+
+\begin{align}
+    \mathrm{E}[y_{GxE}^2] =  \mathrm{E}[(\sum_i^S g_i \boldsymbol{\epsilon}^T\bfalpha_{GxE,i})^2] = \sum_j \mathrm{E}[\epsilon_j^2] \ \mathrm{E}[\alpha_{i,j}^2] = \sigma_i^2 ,
+\end{align}
+
+after a couple of assumptions.
+We define $\sigma_i^2=v_i$ if $\mathbf{g}_i$ is causal and $\sigma_i^2=0$ otherwise.
+We assume all causal SNPs to have equal effect as defined by $v_i=\sigma^2/n_{GxE}$, where $n_{GxE}$ is the number of SNPs having GxE effects.
+We also assume that $\mathrm{E}[\epsilon_j]=0$ and $\mathrm{E}[\epsilon_j^2]=\frac{1}{n_E}$ for every environment $j$. \\

@@ -1,0 +1,91 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{bbm}
+\usepackage{mathrsfs}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{xcolor}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setlength{\tabcolsep}{20pt}
+\textwidth16cm
+\oddsidemargin0.4cm
+\renewcommand{\baselinestretch}{1.3} 	% Einstellung Zeilenabstand
+\renewcommand{\jot}{8pt}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Vectors (greek)
+\newcommand{\bfalpha}{\boldsymbol{\alpha}}
+\newcommand{\bfbeta}{\boldsymbol{\beta}}
+\newcommand{\bfpsi}{\boldsymbol{\psi}}
+\newcommand{\bftheta}{\boldsymbol{\theta}}
+% Vectors
+\newcommand{\bfx}{\mathbf{x}}
+\newcommand{\bfy}{\mathbf{y}}
+\newcommand{\bfa}{\mathbf{a}}
+\newcommand{\bfb}{\mathbf{b}}
+\newcommand{\bfc}{\mathbf{c}}
+\newcommand{\bfg}{\mathbf{g}}
+\newcommand{\bfm}{\mathbf{m}}
+\newcommand{\bfu}{\mathbf{u}}
+\newcommand{\bfz}{\mathbf{z}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newtheorem{env_def}{Definition}
+\newtheorem{env_thm}{Theorem}
+\newtheorem{env_lem}{Lemma}
+\newtheorem{env_prop}{Proposition}
+\newtheorem{env_exm}{Example}
+\newtheorem{env_cor}{Corollary}
+\newtheorem{env_obs}{Observation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\DeclareMathOperator*{\diag}{diag}
+\DeclareMathOperator*{\eigenv}{eigenvalues}
+\DeclareMathOperator*{\var}{Var}
+\DeclareMathOperator*{\expect}{\mathbb{E}}
+\DeclareMathOperator*{\tr}{tr}
+\DeclareMathOperator*{\kl}{KL}
+\DeclareMathOperator*{\argmin}{arg\min}
+\DeclareMathOperator*{\argmax}{arg\max}
+\DeclareMathOperator*{\BETA}{Beta}
+\DeclareMathOperator*{\BINOM}{Bin}
+\DeclareMathOperator*{\BETABINOM}{Beta-Binomial}
+\DeclareMathOperator*{\BERNOULLI}{Bernoulli}
+\DeclareMathOperator*{\NORMAL}{\mathcal{N}}
+\DeclareMathOperator*{\LOGNORMAL}{LogNormal}
+\DeclareMathOperator*{\IWISHART}{\mathcal{W}^{-1}}
+\DeclareMathOperator*{\IGAMMA}{IG}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\sprod}[2]{\langle #1, #2 \rangle}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{CellRegMap: A statistical framework for mapping  context-specific regulatory variants using single cell RNA-sequencing. \\ \verylarge\textbf{Supplementary Methods}}
+\author{Anna S.E. Cuomo et al.}
+\date{}
+
+\setlength\parindent{0pt}
+
+\begin{document}
+
+\maketitle
+% \pagebreak
+\clearpage
+% \cleardoublepage
+
+\tableofcontents
+
+\include{model}
+\include{predict_effect_sizes}
+\include{simulations}
+\include{endodiff}
+\include{neuroseq}
+\include{derivations}
+
+% \include{analysis}
+\section{Software availability}
+CellRegMap is available under an open source license at \url{https://github.com/limix/CellRegMap}. 
+Code to reproduce the specific analyses presented can be accessed under \url{https://github.com/annacuomo/CellRegMap_analyses}. 
+\bibliographystyle{unsrt} 
+\bibliography{References/references}
+
+\end{document}

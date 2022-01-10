@@ -1,0 +1,425 @@
+\section{The CellRegMap model} 
+
+CellRegMap builds on and extends the structured linear mixed model (StructLMM \cite{moore2019linear}), which has recently been proposed to test for genotype-environment interactions on physiological traits in population cohorts. 
+CellRegMap extends this model to test for interactions between genotype and cellular context on gene expression using single-cell RNA-seq as readout. 
+The model is not designed for variant discovery but instead designed to identify and characterize genotype-context (G$\times$C) interactions at known expression quantitative trait loci (eQTL).
+In Section~\ref{sec:model}, the CellRegMap model is motivated and derived, followed by the introduction of an efficient scheme for parameter inference and statistical testing.
+
+\subsection{Model definition}
+\label{sec:model}
+% clarify that samples (N) are cells (or pseudocells)
+% maybe start directly from structLMM (not LM, LMM)
+
+Commonly used methods for eQTL mapping based on linear or linear mixed models (LMM) relate individual genetic variants to the expression level of a gene of interest, i.e.,
+% \begin{equation}\label{eq:LM}
+%  \mathbf{y} =  \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G + \boldsymbol{\psi},
+% \end{equation}
+
+\begin{equation}\label{eq:LMM}
+ \mathbf{y} =  \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G + \boldsymbol{\psi}. 
+\end{equation}
+
+Here, $\mathbf{y}$ denotes a $N \times 1$ vector of the expression level of a gene of interest across $N$ individuals (typically measured using bulk RNA sequencing); $\mathbf{W}$ is the $N \times P$ design matrix of covariates and $\alpha_i, i=1,..,P$ are the corresponding weights (note that in the main text, i.e., Figure 1d, covariates are omitted for brevity); $\mathbf{g}$ is the $N \times 1$ vector of alleles for each individual at the locus to be assessed and $\beta_G$ denotes the corresponding effect size.
+% The variable $\mathbf{u}$ denotes a random effect term, which can be used to account for additive confounding factors or relatedness, and f
+Finally $\boldsymbol{\psi}$ denotes i.i.d. noise, $\boldsymbol{\psi} \sim \mathcal{N}(\mathbf{0}, \sigma_n^2\mathbf{I})$.
+Additional random effect components have been introduced to account for relatedness between individuals~\cite{hoffman2013correcting}, or to adjust for additive confounding sources of variation on gene expression~\cite{fusi2012joint}. 
+% \\
+
+\subsubsection*{Review of StructLMM}
+StructLMM \cite{moore2019linear} extends the conventional linear association test in Eq.~\eqref{eq:LMM} by including an additional random effect component to account for heterogeneity in effect sizes across individuals due to context-specific genetic effects. 
+Briefly, StructLMM can be cast as:
+
+\begin{equation}\label{eq:StructLMM}
+ \mathbf{y} =  \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G + \mathbf{g} \odot \boldsymbol{\beta_{GxC}} + \mathbf{c} +\boldsymbol{\psi}, 
+\end{equation}
+
+where $\mathbf{g} \odot \boldsymbol{\beta_{GxC}}$ accounts for G $\times$ C and $\mathbf{c}$ for additive contributions of environmental variation. 
+Unlike in conventional interaction tests, genotype-context interactions due to environmental variation are accounted by introducing an additional genetic effect with per-individual effects, where each individual has its own effect size.
+The symbol $\odot$ denotes the Hadamard product and $\boldsymbol{\beta_{GxC}}=[\beta_{GxC_1}, .. ,\beta_{GxC_N}]^T$ is a vector of per-individual effect sizes to account for heterogeneous genetic effects.
+Instead of explicitly estimating the GxC effect sizes, these parameters are marginalised under a multivariate normal prior distribution that is defined by an environmental context covariance matrix
+
+\begin{equation}\label{eq:beta_GxE}
+    \boldsymbol{\beta_{GxC}} \sim \mathcal{N}(\mathbf{0},\sigma_{GxC}^2 \boldsymbol{\Sigma}).
+\end{equation} 
+
+In this case the covariance $\boldsymbol{\Sigma}$ does not encode relatedness as in a classical LMM, but instead accounts for sample covariance due to different environmental states.
+The same environmental covariance matrix can also be used to parameterize a second random effect component to account for additive environmental contributions,
+
+\begin{equation}
+   \mathbf{c} \sim \mathcal{N}(\mathbf{0},\sigma_c^2 \boldsymbol{\Sigma}). 
+\end{equation}
+
+Notably, StructLMM does not account for any additional structure across samples, such as population structure or repeat measurements.
+While discrete populations can be accounted for as covariates, more subtle relatedness or repeat structure cannot be effectively encoded using fixed effect covariates. 
+Consequently, the model is not suitable for any experimental design where multiple observations are available for the same individual, which is the case in single-cell genetic studies where multiple cells are assayed from each individual. 
+Such a repeat structure results in un-calibrated p-values; see also the results from the simulation study to assess calibration (main text Fig. 2). 
+% \\
+
+\subsubsection*{CellRegMap}
+CellRegMap extends StructLMM to allow for applications to single-cell expression data by introducing an additional random effect component that accounts for relatedness or sample repeat structure. 
+First we note that the phenotype $\mathbf{y}$ now represents single-cell resolved expression data, so our samples are expression levels in cells, not individuals. 
+This introduces additional structure in the data, as typically multiple cells are sampled from the same individual.
+To account for this structure, an additional random effect component $\mathbf{u}$ is included in the model: 
+
+\begin{equation}\label{eq:scStructLMM}
+ \mathbf{y} =  \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G + \mathbf{g} \odot \boldsymbol{\beta_{GxC}} + \mathbf{c} + \mathbf{u} + \boldsymbol{\psi}. 
+\end{equation}
+
+Here, $\mathbf{y}$ has the cardinality of single-cells rather than individuals, and hence the G$\times$C component ($\mathbf{g} \odot \boldsymbol{\beta_{GxC}}$) accounts for interactions with cellular states and contexts (which are well defined at the level of single cells) as well as environmental exposures and stimuli (which can also be individual-level).
+The terms $\mathbf{c} \sim \mathcal{N}(\mathbf{0},\sigma_c^2 \boldsymbol{\Sigma})$ and $\boldsymbol{\psi} \sim \mathcal{N}(\mathbf{0},\sigma_n^2\mathbf{I})$ have the same meaning as previously, noting that for these $N \times 1$ vectors $N$ now represents the total number of cells, not the number of unique individuals.
+Similarly, $\boldsymbol{\Sigma})$ is $N \times N$ and is again defined in the space of cells.
+The symbol $\boldsymbol{\beta_{GxC}}\sim \mathcal{N}(\mathbf{0},\sigma_{GxC}^2 \boldsymbol{\Sigma})$ now represents cell-level effect sizes, which again captures variation in genetic effects across cells.
+% to account for heterogeneous genetic effects, which follows a multivariate normal distribution:
+% \begin{equation}\label{eq:beta_GxE}
+%     \boldsymbol{\beta_{GxE}} \sim \mathcal{N}(\mathbf{0},\sigma_{GxE}^2 \boldsymbol{\Sigma}),
+% \end{equation}
+% Depending on the functional form of the environmental covariance $\boldsymbol{\Sigma}$, this model can account for different types of G$\times$E, for example, both discrete and continuous cell states and types or donor-level environmental covariates. 
+% The same environmental covariance matrix is also used to account for additive environmental effects:
+% \begin{equation}
+%   \mathbf{e} \sim \mathcal{N}(\mathbf{0},\sigma_e^2 \boldsymbol{\Sigma}). 
+% \end{equation}
+% Finally, the model includes a background term that accounts for interactions of repeat structure ($\mathbf{R}$) and environments ($\boldsymbol{\Sigma}$):
+The additional random effect component $\mathbf{u}$ accounts for relatedness or the repeat structure, which is parameterized as a product kernel between relatedness ($\mathbf{R}$) and the environmental covariance ($\boldsymbol{\Sigma}$):
+
+\begin{equation}
+    \mathbf{u} \sim \mathcal{N}(\mathbf{0},\sigma_{rc}^2 \mathbf{R} \odot \boldsymbol{\Sigma}).
+\end{equation}
+
+Here, $\mathbf{R}$ denotes the relatedness matrix of individuals expanded to all cells based on the known assignment of cells to individuals and the covariance $\mathbf{\Sigma}$ again denotes the cell-level environmental context.
+Notably, this parametrization extends the classical LMM, which would exclusively consider a relatedness component $\mathbf{R}$.
+One way to interpret this covariance is to account for polygenic interactions between environmental and relatedness, which has previously been considered to estimate the GxE component of heritability~\cite{heckerman2016linear}.
+
+
+% Finally, we include a background term ($\mathbf{u}$) to model non-random interactions between the repeat structure and such contexts. 
+
+% where we note that $\mathbf{R}$ is appropriately expanded to reflect the repeated structure of multiple cells derived from the same individuals. 
+
+\subsection{Construction of the cellular context covariance}
+
+Typically, we define $\boldsymbol{\Sigma} = \mathbf{E}\mathbf{E}^T$, and hence the cellular context covariance is a linear function of a matrix of environmental states $\mathbf{E}$.
+In practice, we consider as cellular contexts axes of variation in the dataset (for example captured by principal components or MOFA \cite{argelaguet2018multi} factors), appropriately standardized (mean=0, standard deviation=1) and build $\boldsymbol{\Sigma} = \mathbf{E}\mathbf{E}^T$ accordingly.
+Depending on the type and structure of cellular contexts, $\boldsymbol{\Sigma}$ can simply separate cells into groups, and appear as a block diagonal or capture continuous transitions (main text Fig. 1c). 
+In principle, CellRegMap can also be use in conjunction with other parameterizations of the cell context covariance.
+
+\subsection{Statistical testing}
+
+The main operations in the CellRegMap model, including parameter inference and tests are implemented in its marginalised form. 
+Integrating over the random effect components, the marginal likelihood of the model in Eq. \eqref{eq:scStructLMM} follows as:
+
+\begin{equation}
+    \label{eq:scStructLMM_marginal}
+     \mathbf{y} \sim \mathcal{N} ( \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G, \sigma^2_{GxC} \text{diag}(\mathbf{g}) \boldsymbol{\Sigma} \text{diag}(\mathbf{g}) + \sigma_c^2 \boldsymbol{\Sigma} + \sigma_{rc}^2 \mathbf{R} \odot \boldsymbol{\Sigma}+ \sigma_n^2 \mathbf{I} ). 
+\end{equation}
+
+While in principle CellRegMap can be used to test for different components, including additive genetics, interactions or the combination of both effects (see~\cite{moore2019linear} for details on StructLMM), we here focus on GxC effects. 
+In order to evaluate the significant contribution of GxC effects, we consider a statistical test that compares the following hypotheses, from Eq.\eqref{eq:scStructLMM}:
+
+\begin{equation*}
+    H_0: \sigma_{GxC}^2 = 0,
+\end{equation*}
+
+\begin{equation*}
+    H_1: \sigma_{GxC}^2 > 0.
+\end{equation*}
+
+We use Rao's Score test~\cite{rao1948large} to evaluate significance, which allows us to only calculate the MLE\footnote{maximum likelihood estimator} of the parameters under the null hypothesis $H_0$, which follows from~Eq.\eqref{eq:scStructLMM_marginal} as:
+
+\begin{equation}\label{eq:scStructLMM_H0_MVN}
+ \mathbf{y}|H_0 \sim \mathcal{N}( \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G, \sigma_c^2 \boldsymbol{\Sigma} + \sigma_{rc}^2 \mathbf{R} \odot \boldsymbol{\Sigma}+ \sigma_n^2 \mathbf{I} ). 
+\end{equation}
+% \\
+
+To test for GxC interactions we adapt the score-based testing scheme employed in StructLMM, which in turn adopts fast LMM testing in LMMs as first proposed in Lippert et al., \cite{lippert2011fast}.
+We here review the key steps involved.
+\\
+
+First, we define the score-based test statistic $\mathrm{Q}$ as:
+
+\begin{equation}\label{eq:Q}
+    \mathrm{Q} = \frac{1}{2}\mathbf{y}^T\mathbf{P}_0 \frac{\partial \mathbf{K}}{\partial \theta}\mathbf{P}_0 \mathbf{y}, 
+\end{equation}
+
+where $\mathbf{K}$ denotes the full covariance matrix, i.e., from Eq. \eqref{eq:scStructLMM}:
+
+\begin{equation}\label{eq:full_K_scStructLMM}
+    \mathbf{K} = \sigma_{GxC}^2\mathrm{diag}(\mathbf{g})\boldsymbol{\Sigma} \ \mathrm{diag}(\mathbf{g}) +  \sigma_c^2 \boldsymbol{\Sigma} + \sigma_{rc}^2 \mathbf{R}\odot\boldsymbol{\Sigma}+ \sigma_n^2 \mathbf{I},
+\end{equation}
+
+and 
+
+\begin{equation}
+    \mathbf{P}_0 = \mathbf{K}_0^{-1}-\mathbf{K}_0^{-1}\mathbf{X}(\mathbf{X}^T\mathbf{K}_0^{-1}\mathbf{X})^{-1}\mathbf{X}^T\mathbf{K}_0^{-1}
+\end{equation}
+
+is a matrix that projects out the fixed effects \cite{lippert2011fast, lippert2014greater}.
+In our case (Eq.\eqref{eq:scStructLMM}), the fixed effects include covariates and the persistent effect of the variant tested: $\mathbf{X} = [\mathbf{W}, \mathbf{g}]$, and $\mathbf{K}_0$ is as in Eq.\eqref{K0}.
+Using Eq.\eqref{eq:full_K_scStructLMM} and considering the parameter $\theta = \sigma_{GxC}^2$, we can derive:
+
+% \begin{equation}
+%     \frac{\partial \mathbf{K}}{\partial \sigma_{GxE}^2} = \mathrm{diag}(\mathbf{g})\mathbf{E}\mathbf{E}^T\mathrm{diag}(\mathbf{g}).
+% \end{equation}
+
+% Next, let us define $\mathbf{K}_1 = \mathrm{diag}(\mathbf{g})\mathbf{E}\mathbf{E}^T\mathrm{diag}(\mathbf{g})$and substituting in eq. \eqref{eq:Q}, we can write:
+
+\begin{equation}
+    \frac{\partial \mathbf{K}}{\partial \sigma_{GxC}^2} = \mathrm{diag}(\mathbf{g})\boldsymbol{\Sigma} \ \mathrm{diag}(\mathbf{g}).
+\end{equation}
+
+Next, let us define $\mathbf{K}_1 = \mathrm{diag}(\mathbf{g})\boldsymbol{\Sigma} \ \mathrm{diag}(\mathbf{g})$; substituting in Eq.\eqref{eq:Q}, we can write:
+
+\begin{equation}
+    \mathrm{Q} = \frac{1}{2}\mathbf{y}^T\mathbf{P}_0 \mathbf{K}_1\mathbf{P}_0 \mathbf{y}. \\
+\end{equation}
+
+% \newpage
+
+As before, $H_1: \sigma_{GxC}^2>0$, noting that as a variance parameter, $\sigma_{GxC}^2$ is constrained to take on positive values.
+As a result, the score test statistic $\mathrm{Q}$ follows a mixture of $\chi^2$ distributions\footnote{We refer the reader specifically to the supplementary methods from \cite{lippert2014greater} for a proof.}:
+
+\begin{equation}
+    \mathrm{Q} \sim \sum_i \lambda_i \chi^2_1, 
+\end{equation}
+
+where $\lambda_i$'s are the non-zero eigenvalues of $\frac{1}{2}\mathbf{P}_0^{\frac{T}{2}} \frac{\partial\mathbf{K}}{\partial \theta} \mathbf{P}_0^{\frac{1}{2}}$.\\
+
+It can be shown that for a matrix $\mathbf{A}$ the non-zero eigenvalues of $\mathbf{A}\mathbf{A}^T$ are the same as those of $\mathbf{A}^T\mathbf{A}$ , thus we can re-arrange and compute $\lambda_i$'s as the eigenvalues of:
+
+\begin{equation}
+    \frac{1}{2}\frac{\partial\mathbf{K}}{\partial \theta}^{\frac{T}{2}} \mathbf{P}_0 \frac{\partial\mathbf{K}}{\partial \theta}^{\frac{1}{2}}
+\end{equation}
+
+instead. 
+% \\
+To evaluate the significance of the score-best test statistic $\mathrm{Q}$ we use the approach described in Sequence Kernel Association Test (SKAT \cite{wu2011rare}), thereby using the Davies exact method \cite{davies1980algorithm} to compute the corresponding p values, and switching to the modified moment matching approximation method \cite{liu2009new, lee2012optimal, duchesne2010computing} when this fails to converge.
+
+\subsection{Implementation}
+
+To enable efficient parameter inference, we extended the strategy in StructLMM~\cite{moore2019linear}, which builds on the reparametrization of the LMM likelihood proposed in~\cite{lippert2011fast}. 
+Briefly, the key is to rewrite the overall covariance of $\mathbf{y}|H_0$ in the form: $\sigma^2_m(\mathbf{M}+\delta\mathbf{I})$, where $\mathbf{M}$ is ideally low rank to enable an efficient singular value decomposition.  
+To do so, we introduce a weight parameter $\rho_1$, such that the covariance matrix of $\mathbf{y}$ under the null hypothesis, $\mathbf{K}_0 = \mathrm{Cov}(\mathbf{y} | H_0)$ can be cast as:
+
+\begin{equation}\label{K0}
+\begin{split}
+    \mathbf{K}_0 = \sigma_c^2 \boldsymbol{\Sigma} + \sigma_{rc}^2 \mathbf{R} \odot \boldsymbol{\Sigma}+ \sigma_n^2 \mathbf{I} =\\
+    \sigma_m^2 \ [\rho_1\boldsymbol{\Sigma} + (1-\rho_1) \mathbf{R} \odot \boldsymbol{\Sigma}] + \sigma_n^2 \mathbf{I} =\\ \sigma_m^2 \{ {\mathbf{M}(\rho_1) + \delta_1 \mathbf{I}\}},
+\end{split}
+\end{equation}
+
+where $\sigma_m^2\rho_1 = \sigma_c^2$,
+$\sigma_m^2(1-\rho_1) = \sigma_{rc}^2$,
+$\delta_1 = \sigma_n^2/\sigma_m^2$, and $\mathbf{M}(\rho_1) = \rho_1\boldsymbol{\Sigma} + (1-\rho_1) \mathbf{R} \odot \boldsymbol{\Sigma}$.\\
+
+We note that $\mathbf{M}$ only depends on $\rho_1$. 
+The parameter $\rho_1$ is optimized using a grid search with values in the range 0 to 1, selecting the value of $\rho_1$ that maximises the likelihood of $\mathbf{y}|H_0$ under the null.
+Once $\rho_1$ is fixed, the decomposition of $\rho_1\boldsymbol{\Sigma} + (1-\rho_1) \mathbf{R} \odot \boldsymbol{\Sigma}$ can be found using the observation that the decomposition of the linear combination of two square symmetric matrices, e.g.,:
+
+\begin{equation}
+    \mathbf{M} = a\mathbf{A} + b\mathbf{B}
+\end{equation}
+
+can be found as a function of the decomposition of the two original matrices, i.e.,:
+
+\begin{equation}
+    \mathbf{N} = [\sqrt{a}\mathbf{C} | \sqrt{b}\mathbf{D}]
+\end{equation}
+
+such that $\mathbf{M}=\mathbf{N}\mathbf{N}^T, \mathbf{A}=\mathbf{C}\mathbf{C}^T$ and $\mathbf{B}=\mathbf{D}\mathbf{D}^T$. \\
+
+In our case, $\mathbf{A} = \boldsymbol{\Sigma}$ and $\mathbf{B} = \mathbf{R} \odot \boldsymbol{\Sigma}$.
+If $\boldsymbol{\Sigma} = \mathbf{E}\mathbf{E}^T$, its decomposition is straight-forward, i.e., $\mathbf{C} = \mathbf{E}$.
+The decomposition of the second term ($ \mathbf{R} \odot \boldsymbol{\Sigma}$), assuming $\boldsymbol{\Sigma} = \mathbf{E}\mathbf{E}^T$ and $\mathbf{R} = \mathbf{G}\mathbf{G}^T$ is a bit less trivial.
+Assuming that the rank of $\mathbf{R}$ is the number of individuals, that the rank of $\boldsymbol{\Sigma}$ is the number of environments, and that the latter is smaller than the former, we can obtain $\mathbf{D}$ as the decomposition of $\mathbf{R} \odot \boldsymbol{\Sigma}$ by:
+
+\begin{equation}
+    \mathbf{R} \odot \boldsymbol{\Sigma} = \mathbf{R} \odot \sum_i[\mathbf{v}_i \lambda_i \mathbf{v}_i^T] = \sum_i[\textcolor{red}{\mathbf{R} \odot (\mathbf{v}_i \lambda_i \mathbf{v}_i^T)}].
+\end{equation}
+
+% \newpage
+
+The terms in the sum can be rewritten as:
+
+\begin{equation}\label{eq:Lk}
+    \begin{split}
+        \textcolor{red}{\mathbf{R} \odot (\mathbf{v}_i \lambda_i \mathbf{v}_i^T)} 
+        & = \mathbf{R} \odot (\mathbf{u}_i \mathbf{u}_i^T) \\
+        & = \mathbf{R} \odot (\mathrm{diag}(\mathbf{u}_i) \mathbf{e} \mathbf{e}^T \mathrm{diag}(\mathbf{u}_i)) \\
+        & = \mathrm{diag}(\mathbf{u}_i)[\mathbf{R} \odot \mathbf{e} \mathbf{e}^T] \mathrm{diag}(\mathbf{u}_i) \\
+        & = \mathrm{diag}(\mathbf{u}_i) \mathbf{R} \mathrm{diag}(\mathbf{u}_i) \\
+        & = \mathrm{diag}(\mathbf{u}_i) \mathbf{G} \mathbf{G}^T  \mathrm{diag}(\mathbf{u}_i)  \\
+        & = \textcolor{red}{\mathbf{Lk}_i \mathbf{Lk}_i^T},
+    \end{split}
+\end{equation}
+
+where $\mathbf{Lk}_i = \mathrm{diag}(\mathbf{u}_i) \mathbf{G}$; $\lambda_i$'s and $\mathbf{v}_i$'s are eigenvalues and eigenvectors of $\mathbf{E}\mathbf{E}^T$; $\mathbf{u}_i = \sqrt{\lambda_i}\mathbf{v}_i$ and $\mathbf{e}$ is a vector of ones ($\mathbf{e} = [1..1]$). \\
+
+% \newpage
+
+Thus, $\mathbf{M} = \boldsymbol{\Sigma} + \mathbf{R} \odot \boldsymbol{\Sigma}$ can be written as the following sum:
+
+\begin{equation}
+    \mathbf{M} = \boldsymbol{\Sigma} + \sum_i \mathbf{Lk}_i \mathbf{Lk}_i^T,  
+\end{equation}
+
+from which follows:
+
+\begin{equation}
+    \mathbf{N} = [\mathbf{E} \ | \mathbf{Lk}_1 \ | .. \ | \mathbf{Lk}_{ne}],
+\end{equation}
+
+where $ne$ is the number of contexts considered (and the rank of $\boldsymbol{\Sigma}$).
+
+\newpage
+
+\subsection{Computational complexity}
+From using the implementation described above, it follows that the complexity is O(N) where N is the minimum between the number of cells and the product of number of unique individuals $\times$ the number of cellular contexts. Runtimes were also evaluated empirically, using simulated phenotypes for one gene, 25 SNPs and 20 different contexts (see section \ref{sec:simulations}). We considered 25 and 50 individuals, respectively, and assessed computational runtimes as a function of the number of cells per individual (25, 50, 75, 100, 125, 150) using a 2018 MacBook Pro with 2,3 GHz Quad-Core Intel Core i5 processor (Supp. Fig. 1.1).
+
+
+% Various methods have been proposed to compute the tail probability of the mixture of 1-dof $\chi^2$ distributions. 
+% For example, we can use the Davies method \cite{davies1980algorithm}, the moment‐matching‐based noncentral $\chi^2$ approximation method \cite{liu2009new, lee2012optimal}, or the saddlepoint approximation method \cite{kuonen1999miscellanea}. 
+% The Davies methos is the most accurate but can be be computationally expensive.
+% The moment-matching approximation is anti-conservative and could lead to inflated type I errors especially for small significance levels.
+% SKAT: Davies + Liu
+% SKATh: Davies + saddle
+% \cite{wu2016efficient}
+
+% \section{Definition of covariance matrix}
+
+% E?
+
+% PCs, MOFA, HVGs?
+% transformation?
+% normalisation/scaling
+
+% \begin{figure}[h]
+% \centering
+% \includegraphics[width=15.5cm]{Chapter6/Fig/sc_structlmm_calibration.png}
+% \caption[Calibration QQ-plots]{\textbf{Calibration QQ-plots}.\\
+% (a) No genetic effect at all.
+% (b) No GxE effect (persistent only).}
+% \label{fig:sc_structlmm_calibration}
+% \end{figure}
+
+% \subsection{Comparison with StructLMM v0}
+
+% Next, we compared our model to the original StructLMM model \cite{moore2019linear}.
+% StructLMM is expected to have issues in the presence of extended repeated structure, which it is not equipped to deal with.
+% To address this, we simulated various numbers of repeats per donor - mimicking cells -  ranging from 10 to 500.
+% Indeed, we observe over-inflation of StructLMM in the presence of many repeats making the model not calibrated (Fig. Xa).
+% sc-StructLMM, on the other hand, is nicely calibrated (Fig. Xb).
+
+% \subsection{Comparison with standard interaction test}
+
+% We then performed power analysis when comparing our model with one where the environments are modelled as fixed effects (see Section 2.4.2).
+
+% % \clearpage
+
+% \section{Application to differentiating iPS cells}
+
+% % Next, 
+% I applied sc-StructLMM on the data described in \textbf{Chapter 
+% % \ref{chapter4}
+% 4} (and published in \cite{cuomo2020single}).
+% % We applied our model on a recently published dataset.
+% Briefly, human iPS cells (\textbf{section 
+% % \ref{sec:ipsc}
+% 1.2}) from 125 individuals are differentiated from a pluripotent state, to definitive endoderm. 
+% % \subsection{Analysis of factors using MOFA}
+% I use 
+% % principal components (PCs) 
+% multi-factor analysis (MOFA \cite{argelaguet2018multi}) to identify factors that
+% % 10 MOFA factors estimated from the data \cite{argelaguet2018multi}
+% % 500 independent ($r^2<0.2$) highly variable genes (HVGs)
+% % to 
+% capture various aspects of the variation in gene expression in the dataset, which represent cell states and types. 
+% In particular, the MOFA factor1 aligns with the differentiation axis (similar to PC1, see \textbf{section 
+% % \ref{sec:endodiff_sources_of_variation}
+% 4.3.1}). 
+% Factor 3, on the other hand, captures cells in different phases along the cell cycle, as estimated using Seurat \cite{stuart2019comprehensive} (\textbf{Fig. \ref{fig:sc_structlmm_endo_mofa_factors}}). 
+% \\
+
+% % \begin{figure}[h]
+% % \centering
+% % \includegraphics[width=15.5cm]{Chapter6/Fig/MOFA_factors.png}
+% % \caption[MOFA factors used as contexts]{\textbf{MOFA factors used as contexts}.\\
+% % Evaluation of some of the factors identified using multi-omics factor analysis (MOFA \cite{argelaguet2018multi}).
+% % (left) MOFA1 and MOFA2 mostly reflect the developmental stage of our cells, with MOFA1 (x axis) recapitulating a differentiation trajectory from iPSCs (day0) to definitive endoderm (day3).
+% % MOFA3 vs MOFA6: cell cycle.}
+% % \label{fig:sc_structlmm_endo_mofa_factors}
+% % \end{figure}
+
+% First, I used the first 10 factors calculated using MOFA as cellular states in the model (i.e. as columns of $\mathbf{E}$ from eq. \eqref{eq:scStructLMM}).
+% For numerical reasons, the factors were quantile normalised, prior to building the covariance matrix (as $\mathbf{E}\mathbf{E}^T$). 
+% % \\
+% Next, I tested the combined set of eQTL identified at any of the developmental stages defined in \textbf{Chapter 
+% % \ref{chapter4}
+% 4} (iPSC, mesendo, defendo - for a total of 4,470 gene-SNP pairs) for GxE interactions.
+% Single cell expression of each of the eGenes tesed ($\mathbf{y}$) was also quantile-normalised. \\
+
+% To assess the effect of including more cell states in the model, I tested the model using only one factor, the first two factors, the first five, and finally all ten factors (\textbf{Fig. \ref{fig:sc_structlmm_endo_barplots}}).
+
+% \newpage
+
+% % \subsection{Data prep}
+
+% % Both y and E are quantile normalised,..
+
+% \subsection{Permutation strategy for multiple testing correction}
+
+% To correct for multiple testing correction, I used a permutation approach similar to that described in \cite{ongen2016fast}.
+% In particular, I ran 100 permutations for each of the eQTL tested, where I permuted the values of the cell states (i.e. the MOFA factors) within each donor, across cells.
+% Next, for each set of permutations, I select the minimum (permuted) p value, across all eQTL.
+% I then use these 100 permuted p values to estimate a beta distribution and correct the original real p values.
+
+% \subsection{Results}
+
+% We observe an increase in our power to identify `interaction eGenes' (i.e. genes with at least one GxE interaction eQTL) as we increase the number of 
+% factors included as contexts 
+% % PCs used as environments, with then a plateau at 50 PCs
+% (\textbf{Fig. \ref{fig:sc_structlmm_endo_barplots}}). \\
+
+% % \begin{figure}[htbp]
+% % \centering
+% % \includegraphics[width=14cm]{Chapter6/Fig/sc_structlmm_endodiff_mofa.png}
+% % \caption[Results on endodiff data]{\textbf{Results on endodiff data}.\\
+% % Barplots showing the number of eGenes compared to the genes tested.
+% % Endodiff significant eGenes only (iPSC+mesendo+defendo, FDR < 10\%).
+% % Chromosome 22 only (88 genes).}
+% % \label{fig:sc_structlmm_endo_barplots}
+% % \end{figure}
+
+% % Reassuringly, we could recapitulate most (XX\%) of the dynamic eQTL described in the original study (\textbf{section 
+% % % \ref{sec:endodiff_dynamic_eqtl}
+% % 4.5}), which were detected using solely PC1, 
+% % % and using ASE and a linear model (see eq. \eqref{eq:endodiff_ase_pseudotime}
+% % % 4.1).
+% % % and a fixed effect linear mixed model (Methods). 
+% % However, we show that we have increased power using our model. 
+% % Furthermore, the overlap with our interaction eQTL and the dynamic eQTL identified in Cuomo \textit{et al}. decreases, the more PCs we include (Fig. XX).\\
+
+
+
+% % As environments, we used
+% % the first 10 principal components
+
+
+% % PCs, MOFA, HVGs?
+% % transformation?
+% % normalisation/scaling
+
+
+
+
+% % \section{Upstream analysis}
+
+% % One of the key steps in running this method is choosing the environmental factors.
+% % We expect most applications to be for scRNA-seq datasets only (and genotypes).
+% % This means that the environments need to be estimated from the transcriptomic data, which is also used as phenotype, causing concerns of circularity.
+
+
+% % A user might have 
+% % PCA
+% % MOFA (single omic)
+
+% % \section{Downstream analysis} 
+
+
