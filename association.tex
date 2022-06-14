@@ -1,0 +1,47 @@
+\section{CellRegMap-Association test} \label{sec:assoc}
+
+Within the CellRegMap software suite it is also possible to test for persistent genetic effects, while appropriately account for cellular context.
+This model essentially draws from the null hypothesis of CellRegMap, thus comparing the following two models (where we exclude the G$\times$ term from Eq. \eqref{eq:scStructLMM}):
+
+\begin{equation*}
+    H_0: \mathbf{y} = \mathbf{W}\boldsymbol{\alpha} + \mathbf{c} + \mathbf{u} + \boldsymbol{\psi},
+\end{equation*}
+
+vs
+
+\begin{equation*}
+    H_1: \mathbf{y} = \mathbf{W}\boldsymbol{\alpha} + \mathbf{g}\beta_G + \mathbf{c} + \mathbf{u} + \boldsymbol{\psi}.
+\end{equation*}
+
+All variables are defined as in section~\ref{sec:CellRegMap}, with the exception of $\mathbf{u}$, which here is defined to account for the repeated structure due to many cell been drawn from the same individual:
+
+\begin{equation*}
+    \mathbf{u} \sim \mathcal{N}(\mathbf{0},\sigma_{r}^2 \mathbf{R}).
+\end{equation*}
+
+This simplifies the implementation, where we note that Eq. \eqref{K0} becomes:
+
+\begin{equation}\label{K0}
+\begin{split}
+    \mathbf{K}_0 = \sigma_c^2 \boldsymbol{\Sigma} + \sigma_{r}^2 \mathbf{R} + \sigma_n^2 \mathbf{I} =\\
+    \sigma_m^2 \ [\rho_1\boldsymbol{\Sigma} + (1-\rho_1) \mathbf{R} ] + \sigma_n^2 \mathbf{I} =\\ \sigma_m^2 \{ {\mathbf{M}'(\rho_1) + \delta_1 \mathbf{I}\}},
+\end{split}
+\end{equation}
+
+from which follows:
+
+\begin{equation}
+    \mathbf{M} = \boldsymbol{\Sigma} + \mathbf{R},  
+\end{equation}
+
+and
+
+\begin{equation}
+    \mathbf{N} = [\mathbf{E} \ | \mathbf{G}],
+\end{equation}
+
+where we assume, as before, $\boldsymbol{\Sigma} = \mathbf{E}\mathbf{E}^T$ and $\mathbf{R} = \mathbf{G}\mathbf{G}^T$.
+
+To assess significance, we use a likelihood ratio test (LRT).
+This is well defined since we are testing $\beta_G \neq 0$, which is not at the boundary of possible values of the parameter, as $-\infty < \beta_G < \infty$.
+
